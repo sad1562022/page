@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据展示 - 饼状图分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .description {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .chart-title {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        select,
+        button {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            color: #333;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .data-table tr:hover {
+            background: #f1f8ff;
+        }
+
+        .highlight {
+            font-weight: 600;
+            color: #3498db;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>数据可视化分析</h1>
+            <p class="description">使用饼状图展示数据分布情况，支持多维度数据筛选和查看详细数据。</p>
+        </header>
+
+        <div class="dashboard">
+            <div class="chart-container">
+                <h2 class="chart-title">销售数据分布</h2>
+                <canvas id="pieChart"></canvas>
+            </div>
+
+            <div class="controls">
+                <h2 class="chart-title">数据控制面板</h2>
+
+                <div class="control-group">
+                    <label for="dataCategory">数据类别</label>
+                    <select id="dataCategory">
+                        <option value="sales">销售数据</option>
+                        <option value="users">用户分布</option>
+                        <option value="products">产品分类</option>
+                        <option value="regions">区域分布</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="timeRange">时间范围</label>
+                    <select id="timeRange">
+                        <option value="month">本月</option>
+                        <option value="quarter">本季度</option>
+                        <option value="year" selected>本年度</option>
+                        <option value="all">全部数据</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button id="updateChart">更新图表</button>
+                </div>
+
+                <div class="control-group">
+                    <h3>详细数据</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>类别</th>
+                                <th>数值</th>
+                                <th>百分比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody">
+                            <!-- 数据将通过JavaScript填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+        </footer>
+    </div>
+
+    <script>
+        // 初始化图表
+        let pieChart;
+
+        // 模拟数据
+        const dataSets = {
+            sales: {
+                labels: ['电子产品', '服装', '食品', '家居用品', '图书'],
+                data: [35, 25, 20, 15, 5],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ]
+            },
+            users: {
+                labels: ['18-25岁', '26-35岁', '36-45岁', '46-55岁', '56岁以上'],
+                data: [25, 40, 20, 10, 5],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 205, 86, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ]
+            },
+            products: {
+                labels: ['手机', '电脑', '平板', '配件', '其他'],
+                data: [40, 30, 15, 10, 5],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ]
+            },
+            regions: {
+                labels: ['华东', '华北', '华南', '西南', '东北', '西北'],
+                data: [30, 25, 20, 10, 8, 7],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(201, 203, 207, 0.7)'
+                ]
+            }
+        };
+
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            const currentDataSet = dataSets.sales;
+
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: currentDataSet.labels,
+                    datasets: [{
+                        data: currentDataSet.data,
+                        backgroundColor: currentDataSet.backgroundColor,
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            updateDataTable(currentDataSet);
+        }
+
+        // 更新数据表格
+        function updateDataTable(dataSet) {
+            const tableBody = document.getElementById('dataTableBody');
+            const total = dataSet.data.reduce((a, b) => a + b, 0);
+
+            let tableHTML = '';
+            dataSet.labels.forEach((label, index) => {
+                const value = dataSet.data[index];
+                const percentage = Math.round((value / total) * 100);
+                tableHTML += `
+                    <tr>
+                        <td>${label}</td>
+                        <td>${value}</td>
+                        <td>${percentage}%</td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = tableHTML;
+        }
+
+        // 更新图表
+        function updateChart() {
+            const category = document.getElementById('dataCategory').value;
+            const dataSet = dataSets[category];
+
+            pieChart.data.labels = dataSet.labels;
+            pieChart.data.datasets[0].data = dataSet.data;
+            pieChart.data.datasets[0].backgroundColor = dataSet.backgroundColor;
+
+            pieChart.update();
+            updateDataTable(dataSet);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            initChart();
+
+            // 添加事件监听
+            document.getElementById('updateChart').addEventListener('click', updateChart);
+        });
+    </script>
+</body>
+
+</html>
